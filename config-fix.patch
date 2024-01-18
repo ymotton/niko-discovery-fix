@@ -1,0 +1,15 @@
+diff --git a/App.pc.config b/App.pc.config
+index b653966..d80e60b 100644
+--- a/App.pc.config
++++ b/App.pc.config
+@@ -16,8 +16,8 @@
+ 		<add key="ResourceBundleRemoteUrl" value="https://mynikohomecontrol.niko.eu/resourcebundle/" /> <!-- this url will be overwritten by teamcity according to the environment -->
+ 
+     <!-- MQTT SETTINGS -->
+-		<add key="MqttBrokerIpStrategy" value="discovery"/> <!-- Supported values: configuration, discovery -->
+-		<add key="MqttBrokerIp" value="10.69.55.1" /> <!-- This ip is used when the broker ip strategy is set to configuration -->
++		<add key="MqttBrokerIpStrategy" value="configuration"/> <!-- Supported values: configuration, discovery -->
++		<add key="MqttBrokerIp" value="192.168.3.236" /> <!-- This ip is used when the broker ip strategy is set to configuration -->
+ 		<add key="MqttBrokerPort" value="8883" /> <!-- The port on the coco, to connect to the MQTT broker -->
+ 		<add key="MqttBrokerUseTls" value="true" /> 
+ 		<!-- should be false to disable TLS (typically in combination with port 1883 for local connections), true if TLS should be used (other ports, i.e. 8883) -->

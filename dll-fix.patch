@@ -1,0 +1,69 @@
+diff --git a/Niko.Nhc.Discovery.csproj b/Niko.Nhc.Discovery.csproj
+index 19a9162..b546619 100644
+--- a/Niko.Nhc.Discovery.csproj
++++ b/Niko.Nhc.Discovery.csproj
+@@ -17,6 +17,12 @@
+     <Reference Include="Niko.Common">
+       <HintPath>C:\Program Files\Niko Home Control programming software\resources\app\backend\Niko.Common.dll</HintPath>
+     </Reference>
++    <Reference Include="Niko.Config.Common">
++      <HintPath>C:\Program Files\Niko Home Control programming software\resources\app\backend\Niko.Config.Common.dll</HintPath>
++    </Reference>
++    <Reference Include="Niko.NHC2.Communication">
++      <HintPath>C:\Program Files\Niko Home Control programming software\resources\app\backend\Niko.NHC2.Communication.dll</HintPath>
++    </Reference>
+     <Reference Include="Niko.Elinq">
+       <HintPath>C:\Program Files\Niko Home Control programming software\resources\app\backend\Niko.Elinq.dll</HintPath>
+     </Reference>
+diff --git a/Niko.Nhc.Discovery/ControllerDiscoverer.cs b/Niko.Nhc.Discovery/ControllerDiscoverer.cs
+index e2ccdf7..121a89c 100644
+--- a/Niko.Nhc.Discovery/ControllerDiscoverer.cs
++++ b/Niko.Nhc.Discovery/ControllerDiscoverer.cs
+@@ -9,6 +9,7 @@ using System.Threading;
+ using System.Threading.Tasks;
+ using Android.Runtime;
+ using Niko.Common.Extensions;
++using Niko.Config.Common.Settings;
+ using Niko.Nhc.Discovery.Gateway;
+ using log4net;
+ 
+@@ -29,8 +30,11 @@ public class ControllerDiscoverer : IControllerDiscoverer
+ 
+ 	private static int _portNumberOffset;
+ 
+-	public ControllerDiscoverer()
++	private readonly IAppSettings _appSettings;
++
++	public ControllerDiscoverer(IAppSettings appSettings)
+ 	{
++		_appSettings = appSettings;
+ 		Log.Debug("Creating ControllerDiscoverer");
+ 	}
+ 
+@@ -41,14 +45,24 @@ public class ControllerDiscoverer : IControllerDiscoverer
+ 			IEnumerable<UnicastIPAddressInformation> source = from inf in IpAddressExtensions.GetLocalIPAddresses()
+ 				where inf.Address.FirstOctet() != 127
+ 				where inf.IPv4Mask.ToString() != "255.255.255.255"
++				where inf.Address.ToString() == "192.168.0.72"
+ 				select inf;
+ 			TaskFactory taskFactory = new TaskFactory();
++			Task[] array = source.Select((UnicastIPAddressInformation inf) => taskFactory.StartNew(() => GetControllerInfoForSubnet(inf, timeoutMilliseconds))).ToArray();
+ 			Task[] tasks;
+-			Task[] source2 = (tasks = source.Select((UnicastIPAddressInformation inf) => taskFactory.StartNew(() => GetControllerInfoForSubnet(inf, timeoutMilliseconds))).ToArray());
++			Task[] array2 = (tasks = array);
+ 			Task.WaitAll(tasks);
+-			return (from x in ((IEnumerable<Task<IEnumerable<ControllerInfo>>>)source2).SelectMany((Task<IEnumerable<ControllerInfo>> t) => t.Result)
++			List<ControllerInfo> list = (from x in ((IEnumerable<Task<IEnumerable<ControllerInfo>>>)array2).SelectMany((Task<IEnumerable<ControllerInfo>> t) => t.Result)
+ 				group x by x.MacAddress into x
+ 				select x.First()).ToList();
++			if (_appSettings.MqttBrokerIpStrategy == MqttBrokerIpStrategy.Configuration && list.Any())
++			{
++				Log.DebugFormat("Overwriting returned IP with {0}", _appSettings.MqttBrokerIp);
++				ControllerInfo controllerInfo = list.Single();
++				controllerInfo.IpAddress = _appSettings.MqttBrokerIp;
++				controllerInfo.SubnetMask = "255.255.255.0";
++			}
++			return list;
+ 		}
+ 		catch (Exception exception)
+ 		{
